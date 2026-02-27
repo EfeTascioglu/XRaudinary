@@ -13,7 +13,8 @@ static const char *WIFI_PASS = "12345678";
 
 // Server settings
 static const char *DEVICE_ID = "esp32-nauthiz-01";
-static const char *SERVER_IP = "10.213.87.70";
+// static const char *SERVER_IP = "10.213.87.70"; // ANDY'S COMPUTER
+static const char *SERVER_IP = "10.213.87.53"; // MATTHEW'S COMPUTER
 static const int UDP_PORT_COMBINED = 30001;  // Single port for all 3 channels combined
 
 // UDP client (single socket for combined transmission)

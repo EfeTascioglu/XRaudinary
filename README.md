@@ -25,8 +25,8 @@ the system architecture, sound source localization approach, and
 appropriateness for real-time conversational contexts.
 
 ## Demo
-<img width="400" height="400" alt="AudinaryBreadboard" src="https://github.com/user-attachments/assets/54e0eab5-eb39-4c55-b751-ad988de1330c" />
-<img width="478" height="380" alt="AudinaryBreadboard" src="https://github.com/user-attachments/assets/af55e14e-7bdd-4bbb-ad78-fca82819d6f8" />
+<img width="300" height="300" alt="AudinaryBreadboard" src="https://github.com/user-attachments/assets/54e0eab5-eb39-4c55-b751-ad988de1330c" />
+<img width="359" height="300" alt="AudinaryBreadboard" src="https://github.com/user-attachments/assets/af55e14e-7bdd-4bbb-ad78-fca82819d6f8" />
 
 ## System
 <img width="1849" height="563" alt="image" src="https://github.com/user-attachments/assets/755c1900-eca8-405a-85f2-b9d29980bcfa" />

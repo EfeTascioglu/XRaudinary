@@ -1,0 +1,12 @@
+[WAV EXPORT]
+  Total bytes: 3934368
+  Total samples: 983592
+  Num frames: 327864
+  Duration at 48kHz: 6.8305 sec
+  Channels: 3, Sample width: 4 bytes, Sample rate: 48000 Hz
+  WAV verification:
+    Channels: 3
+    Sample width: 4
+    Frame rate: 48000
+    Frames in WAV: 327864
+    Duration: 6.8305 sec

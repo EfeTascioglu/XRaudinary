@@ -79,7 +79,7 @@ def test_from_mono_audio(
         print(f"Source {i+1} (m): ({float(pos[0]):.4f}, {float(pos[1]):.4f}, {float(pos[2]):.4f})  strength: {strength:.4f}")
 
 
-def main(data, fs) -> None:
+def main(data, fs, third_channel_hardcoded_delay=0) -> None:
     print(f"Running localize from audio \n")
 
     #info = sf.info(wav_path)
@@ -97,6 +97,11 @@ def main(data, fs) -> None:
     else:
         data = data.astype(np.float64)
     channels = [data[:, i] for i in range(data.shape[1])]
+    if third_channel_hardcoded_delay != 0:
+        channels[2] = np.roll(channels[2], third_channel_hardcoded_delay)
+
+    for i in range(len(channels)):
+        print(f"Channel {i}: {channels[i][0:10]}")
 
     print(f"Number of channels {data.shape[1]} \n")
     window_len = int(0.1 * fs)
@@ -119,5 +124,6 @@ def main(data, fs) -> None:
 
 if __name__ == "__main__":
     import sys
-    #main("audio_2026-02-17T21-29-06-927Z.wav")
-    test_from_mono_audio("test_audio.wav", "test_audio_2.wav", "test_audio.wav")
+    fs, data = wavfile.read("audio_2026-02-27T18-58-13-713Z.wav")
+    main(data, fs, 1)
+    #test_from_mono_audio("test_audio.wav", "test_audio_2.wav", "test_audio.wav")

@@ -99,7 +99,7 @@ def initilaize_model() -> WhisperModel:
 queue = asyncio.Queue()
 
 
-async def process_wavs(whisper_model, directory: str):
+async def process_wavs(whisper_model, directory: str, third_channel_hardcoded_delay=0):
     while True:
         wav_path = get_oldest_wav(directory)
         if not wav_path:
@@ -112,7 +112,7 @@ async def process_wavs(whisper_model, directory: str):
         data, fs = convert_wav_to_raw(wav_path)
 
         ## 2. Run localization
-        localization_vector = localization_main(data, fs)
+        localization_vector = localization_main(data, fs, third_channel_hardcoded_delay=third_channel_hardcoded_delay)
         print(f"Localization vector: {localization_vector}")
 
         ## 3. Run transcription
@@ -140,6 +140,7 @@ async def ws_handler(websocket, path):
 
 
 async def main_async():
+    third_channel_hardcoded_delay = 0
     whisper_model = initilaize_model()
     directory = "./wav_queue"
 
@@ -147,7 +148,7 @@ async def main_async():
     server = websockets.serve(ws_handler, "0.0.0.0", 8765) # init a WebSocket Server in python
 
     await asyncio.gather(   # gather -> run concurrently in the event loop so the processing of the wavs and the server is running concurrently
-        process_wavs(whisper_model, directory),
+        process_wavs(whisper_model, directory, third_channel_hardcoded_delay=third_channel_hardcoded_delay),
         server
     )
 

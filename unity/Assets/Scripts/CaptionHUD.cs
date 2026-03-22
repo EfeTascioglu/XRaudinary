@@ -8,17 +8,31 @@ public class CaptionHUD : MonoBehaviour
     public Transform hmd;
 
     public float anchorDistance = 3.0f;
-    public float verticalOffset = -0.10f;
+    public float verticalOffset = 0.8f;
+    public float offscreenTopOffset = 0.1f;
 
-    public float horizontalFovDeg = 90f;
+    public float inWindowMinDeg = 70f;
+    public float inWindowMaxDeg = 110f;
+
     public float yawSmoothingTau = 0.15f;
 
-    public float staleSeconds = 0.8f;
+    public float staleSeconds = 1.5f;
     public float fadeOutSeconds = 0.8f;
 
-    public Vector2 boxSize = new Vector2(150f, 30f);
-    public float worldScale = 0.005f;
-    public float fontSize = 18f;
+    public Vector2 boxSize = new Vector2(220f, 42f);
+    public float worldScale = 0.004f;
+    public float fontSize = 12f;
+    public float arrowFontSize = 64f;
+
+    public string startupCaption = "Welcome! Initializing...";
+    public float startupVisibleSeconds = 2.0f;
+
+    public bool logCaptionsToLogcat = true;
+    public int logEveryNCaptionUpdates = 1;
+    public bool logYawDebug = false;
+
+    private int _captionLogCount = 0;
+    private long _lastSeqSeen = -1;
 
     RectTransform _rootRect;
     Image _panelImg;
@@ -26,109 +40,126 @@ public class CaptionHUD : MonoBehaviour
     TextMeshProUGUI _arrowTmp;
 
     float _yawFiltered;
+    float _yawRaw;
     float _lastMsgTime = -999f;
-    string _latestText = "";
-
-    Vector3 _dirQuest = Vector3.forward;
     bool _hasDirQuest;
+    Vector3 _dirQuest = Vector3.forward;
 
     void Awake()
     {
         CreateWorldHud();
-        ApplyAlpha(0f);
+
+        if (_tmp != null) _tmp.text = startupCaption;
+        _lastMsgTime = Time.time;
+        _hasDirQuest = true;
+        _dirQuest = Vector3.forward;
+
+        ApplyAlpha(1f);
         SetArrow("");
+
+        Debug.Log("[HUD] Awake() - created world HUD + startup caption");
     }
 
     void LateUpdate()
     {
-        if (client == null || hmd == null) return;
+        if (hmd == null) return;
 
-        DrainIncoming();
+        if (client != null)
+            ProcessLatest();
 
         float age = Time.time - _lastMsgTime;
-        float alpha = ComputeAlpha(age);
+        float alpha = (Time.timeSinceLevelLoad < startupVisibleSeconds) ? 1f : ComputeAlpha(age);
         ApplyAlpha(alpha);
 
         if (alpha <= 0.001f) return;
-        if (!_hasDirQuest) return;
 
-        Vector3 dirWorld = hmd.rotation * _dirQuest;
-
-        transform.position = hmd.position + dirWorld * anchorDistance + hmd.up * verticalOffset;
-
-        transform.rotation = Quaternion.LookRotation(transform.position - hmd.position, hmd.up);
-
-        SetArrow(ComputeOffscreenArrow());
-    }
-
-    void DrainIncoming()
-    {
-        bool gotValidYaw = false;
-        float yawCandidate = _yawFiltered;
-
-        while (client.TryDequeueRawJson(out string json))
+        if (!_hasDirQuest)
         {
-            ServerPacket pkt;
-            try
-            {
-                pkt = JsonUtility.FromJson<ServerPacket>(json);
-            }
-            catch
-            {
-                continue;
-            }
-
-            if (pkt != null && !string.IsNullOrWhiteSpace(pkt.transcription))
-            {
-                _latestText = pkt.transcription;
-                if (_tmp != null) _tmp.text = _latestText;
-                _lastMsgTime = Time.time;
-            }
-
-            if (pkt == null || pkt.localization == null || pkt.localization.Length < 3)
-                continue;
-
-            Vector3 mic = new Vector3(pkt.localization[0], pkt.localization[1], pkt.localization[2]);
-
-            Vector3 quest = MicToQuest(mic);
-
-            // Unity convention
-            quest = new Vector3(quest.x, quest.z, quest.y);
-
-            if (quest.sqrMagnitude < 1e-8f)
-                continue;
-
-            Vector3 dirQuest = quest.normalized;
-
-            _dirQuest = dirQuest;
+            _dirQuest = Vector3.forward;
             _hasDirQuest = true;
-
-            if (Mathf.Abs(dirQuest.x) > 1e-5f || Mathf.Abs(dirQuest.z) > 1e-5f)
-            {
-                float yaw = Mathf.Atan2(dirQuest.x, dirQuest.z);
-                yawCandidate = yaw;
-                gotValidYaw = true;
-            }
-
-            _lastMsgTime = Time.time;
         }
 
-        if (!gotValidYaw) return;
+        float yaw = _yawRaw;
+        float yawDeg360 = Mathf.Repeat(yaw * Mathf.Rad2Deg + 360f, 360f);
 
-        float dt = Mathf.Max(0f, Time.deltaTime);
-        _yawFiltered = SmoothExp(_yawFiltered, yawCandidate, dt, yawSmoothingTau);
+        bool inWindow = (yawDeg360 >= inWindowMinDeg && yawDeg360 <= inWindowMaxDeg);
+        bool outOfFov = !inWindow;
+
+        if (logYawDebug)
+        {
+            Debug.Log($"[HUD:YAW] yawRad={yaw:F3} yawDeg360={yawDeg360:F1} inWindow={inWindow}");
+        }
+
+        if (!outOfFov)
+        {
+            Vector3 dirWorld = hmd.rotation * _dirQuest;
+            transform.position = hmd.position + dirWorld * anchorDistance + hmd.up * verticalOffset;
+            SetArrow("");
+        }
+        else
+        {
+            transform.position =
+                hmd.position +
+                hmd.forward * anchorDistance +
+                hmd.up * (verticalOffset + offscreenTopOffset);
+
+            SetArrow((_dirQuest.x < 0f) ? "←" : "→");
+        }
+
+        transform.rotation = Quaternion.LookRotation(transform.position - hmd.position, hmd.up);
     }
 
-    Vector3 MicToQuest(Vector3 vMic)
+    void ProcessLatest()
     {
-        return vMic; // identity placeholder
-    }
+        if (client == null) return;
 
-    string ComputeOffscreenArrow()
-    {
-        float halfFovRad = Mathf.Deg2Rad * horizontalFovDeg * 0.5f;
-        if (Mathf.Abs(_yawFiltered) <= halfFovRad) return "";
-        return (_yawFiltered > 0f) ? "→" : "←";
+        if (!client.TryGetLatestPacket(out var pkt, out var seq, out var rawJson))
+            return;
+
+        if (seq == _lastSeqSeen) return;
+        _lastSeqSeen = seq;
+
+        bool gotAny = false;
+
+        string caption = pkt.GetCaptionText();
+        if (!string.IsNullOrWhiteSpace(caption))
+        {
+            if (_tmp != null) _tmp.text = caption;
+            _lastMsgTime = Time.time;
+            gotAny = true;
+
+            if (logCaptionsToLogcat)
+            {
+                _captionLogCount++;
+                if (_captionLogCount % Mathf.Max(1, logEveryNCaptionUpdates) == 0)
+                    Debug.Log($"[HUD:CAPTION] seq={seq} \"{caption}\"");
+            }
+        }
+
+        if (pkt.localization != null && pkt.localization.Length >= 3)
+        {
+            float x = pkt.localization[0];
+            float y = pkt.localization[1];
+
+            Vector3 quest = new Vector3(x, 0f, y);
+
+            if (quest.sqrMagnitude > 1e-8f)
+            {
+                _dirQuest = quest.normalized;
+                _hasDirQuest = true;
+
+                float yaw = Mathf.Atan2(_dirQuest.z, _dirQuest.x);
+                _yawRaw = yaw;
+
+                float dt = Mathf.Max(0f, Time.deltaTime);
+                _yawFiltered = SmoothExp(_yawFiltered, yaw, dt, yawSmoothingTau);
+
+                _lastMsgTime = Time.time;
+                gotAny = true;
+            }
+        }
+
+        if (!gotAny) return;
     }
 
     static float SmoothExp(float current, float target, float dt, float tau)
@@ -147,26 +178,9 @@ public class CaptionHUD : MonoBehaviour
 
     void ApplyAlpha(float a)
     {
-        if (_tmp != null)
-        {
-            var c = _tmp.color;
-            c.a = a;
-            _tmp.color = c;
-        }
-
-        if (_arrowTmp != null)
-        {
-            var c = _arrowTmp.color;
-            c.a = a;
-            _arrowTmp.color = c;
-        }
-
-        if (_panelImg != null)
-        {
-            var c = _panelImg.color;
-            c.a = 0.55f * a;
-            _panelImg.color = c;
-        }
+        if (_tmp != null) { var c = _tmp.color; c.a = a; _tmp.color = c; }
+        if (_arrowTmp != null) { var c = _arrowTmp.color; c.a = a; _arrowTmp.color = c; }
+        if (_panelImg != null) { var c = _panelImg.color; c.a = 0.55f * a; _panelImg.color = c; }
     }
 
     void SetArrow(string s)
@@ -177,8 +191,6 @@ public class CaptionHUD : MonoBehaviour
     void CreateWorldHud()
     {
         gameObject.name = "CaptionHUD_World";
-        int uiLayer = LayerMask.NameToLayer("UI");
-        if (uiLayer != -1) gameObject.layer = uiLayer;
 
         var canvas = gameObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
@@ -192,7 +204,6 @@ public class CaptionHUD : MonoBehaviour
 
         var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
         panelGO.transform.SetParent(transform, false);
-        if (uiLayer != -1) panelGO.layer = uiLayer;
 
         var panelRect = panelGO.GetComponent<RectTransform>();
         panelRect.sizeDelta = boxSize;
@@ -202,10 +213,9 @@ public class CaptionHUD : MonoBehaviour
 
         var textGO = new GameObject("Text", typeof(RectTransform));
         textGO.transform.SetParent(panelGO.transform, false);
-        if (uiLayer != -1) textGO.layer = uiLayer;
 
         _tmp = textGO.AddComponent<TextMeshProUGUI>();
-        _tmp.text = "";
+        _tmp.text = "HUD TEST";
         _tmp.alignment = TextAlignmentOptions.Center;
         _tmp.fontSize = fontSize;
         _tmp.color = Color.white;
@@ -219,20 +229,25 @@ public class CaptionHUD : MonoBehaviour
 
         var arrowGO = new GameObject("Arrow", typeof(RectTransform));
         arrowGO.transform.SetParent(panelGO.transform, false);
-        if (uiLayer != -1) arrowGO.layer = uiLayer;
 
         _arrowTmp = arrowGO.AddComponent<TextMeshProUGUI>();
         _arrowTmp.text = "";
         _arrowTmp.alignment = TextAlignmentOptions.Center;
-        _arrowTmp.fontSize = fontSize;
+        _arrowTmp.fontSize = arrowFontSize;
         _arrowTmp.color = Color.white;
+        _arrowTmp.textWrappingMode = TextWrappingModes.NoWrap;
 
         var arrowRect = arrowGO.GetComponent<RectTransform>();
-        arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
-        arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
-        arrowRect.sizeDelta = new Vector2(80f, 80f);
-        arrowRect.anchoredPosition = Vector2.zero;
+        arrowRect.anchorMin = new Vector2(0.5f, 1.0f);
+        arrowRect.anchorMax = new Vector2(0.5f, 1.0f);
+        arrowRect.sizeDelta = new Vector2(120f, 60f);
+        arrowRect.pivot = new Vector2(0.5f, 0.0f);
+        arrowRect.anchoredPosition = new Vector2(0f, 4f);
 
         transform.localScale = Vector3.one * worldScale;
+
+        ApplyAlpha(1f);
+
+        _panelImg.enabled = false;
     }
 }

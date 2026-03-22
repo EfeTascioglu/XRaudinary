@@ -858,14 +858,22 @@ MonoBehaviour:
   client: {fileID: 1054074019}
   hmd: {fileID: 1651923065}
   anchorDistance: 3
-  verticalOffset: -0.1
-  horizontalFovDeg: 90
+  verticalOffset: 0.8
+  offscreenTopOffset: 0.1
+  inWindowMinDeg: 75
+  inWindowMaxDeg: 105
   yawSmoothingTau: 0.15
   staleSeconds: 0.8
   fadeOutSeconds: 0.8
   boxSize: {x: 900, y: 180}
-  worldScale: 0.0015
-  fontSize: 56
+  worldScale: 0.004
+  fontSize: 20
+  arrowFontSize: 64
+  startupCaption: Welcome! Initializing...
+  startupVisibleSeconds: 2
+  logCaptionsToLogcat: 1
+  logEveryNCaptionUpdates: 1
+  logYawDebug: 0
 --- !u!114 &1054074019
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -878,12 +886,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27a164bdc0e2b894685dc70dc04e5570, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaptionStream
-  useTestData: 1
+  useTestData: 0
+  serverIP: 10.0.0.211
+  serverPort: 8765
+  serverPath: /
+  logConnection: 1
+  logRxChunks: 0
+  logMessageHeads: 1
+  logParseSuccess: 1
+  logParseFailure: 1
+  logCaptionText: 1
+  logEveryNParses: 1
+  headChars: 160
+  captionChars: 180
   testHz: 0.4
   testJsonMessages: []
-  serverIP: 
-  serverPort: 0
-  serverPath: /
 --- !u!4 &1054074020
 Transform:
   m_ObjectHideFlags: 0

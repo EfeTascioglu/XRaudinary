@@ -4,41 +4,41 @@ using UnityEngine;
 [Serializable]
 public class ServerPacket
 {
-    // JSON output = {
-    //     "localization": [x, y, z],
-    //     "transcription": "..."
-    // }
     public float[] localization;
     public string transcription;
+
+    public string transcript;
+    public string text;
+
+    public string GetCaptionText() => transcription ?? transcript ?? text ?? "";
 }
 
 public struct CaptionMessage
 {
     public Vector3 localizationMic; // vector received from the microphone array
     public Vector3 localizationQuest; // vector after transformed to the Quest frame
-    public float angle; // projected vector angle in the Quest frame
+    public float yawRad; // projected vector angle in the Quest frame
     public string text; // caption
 
     public static CaptionMessage FromPacket(ServerPacket pkt, Func<Vector3, Vector3> micToQuest)
     {
         Vector3 mic = Vector3.zero;
-        if (pkt != null && pkt.localization != null && pkt.localization.Length >= 3)
-        {   
-            // check if the packet exists, the localization is not null, and the localization has at least three values
-            mic = new Vector3(pkt.localization[0], pkt.localization[1], pkt.localization[2]);
-        }
+        if (pkt?.localization != null && pkt.localization.Length >= 3)
+            mic = new Vector3(pkt.localization[0], pkt.localization[2], pkt.localization[1]);
 
-        // placeholder for transformation between microphone frame and Quest frame
-        Vector3 quest = mic;
+        Vector3 q3 = (micToQuest != null) ? micToQuest(mic) : mic;
 
-        float yaw = Mathf.Atan2(quest.x, quest.y);
+        // planar in Unity/Quest convention: x=right, z=forward
+        Vector3 qPlanar = new Vector3(q3.x, 0f, q3.z);
+
+        float yaw = (qPlanar.sqrMagnitude < 1e-8f) ? 0f : Mathf.Atan2(qPlanar.x, qPlanar.z);
 
         return new CaptionMessage
         {
             localizationMic = mic,
-            localizationQuest = quest,
-            angle = yaw,
-            text = pkt != null ? (pkt.transcription ?? "") : "" // if pkt is null or transcription is null, text is ""
+            localizationQuest = qPlanar,   // (if you keep only one, keep planar)
+            yawRad = yaw,
+            text = pkt?.GetCaptionText() ?? ""
         };
     }
 }

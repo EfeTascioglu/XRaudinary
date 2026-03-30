@@ -2,11 +2,13 @@ import numpy as np
 from scipy.optimize import least_squares
 from typing import Optional, List, Tuple as Tup
 
-_DEFAULT_MICS = np.array([[0.0, 0.0, 0.0],
-                          [-0.04, -0.08, 0.0],
-                          [-0.04, 0.08, 0.0]])
+_DEFAULT_MICS = np.array([
+                          [-0.08, -0.1385, 0.0],
+                          [-0.08, 0.1385, 0.0],
+                          [0.16, 0.0, 0.0],
+                          ])
 
-_DEFAULT_MICS_2D = np.array([[0.0, 0.0], [-0.04, -0.02], [0.04, -0.02]])
+_DEFAULT_MICS_2D = np.array([[0.16, 0.0], [-0.1385, -0.08], [-0.1385, 0.08]])
 
 def tdoa_using_ls(
     tdoa: np.ndarray,
@@ -119,7 +121,7 @@ def tdoa_using_grid_search(
     mic_positions: Optional[np.ndarray] = None,
     c: float = 343.0,
     distance: float = 1,
-    n_points: int = 36,
+    n_points: int = 360,
 ) -> tuple[np.ndarray, float]:
     """
     SRP-PHAT style: grid of candidate positions at z=0, x>0, radius=distance.

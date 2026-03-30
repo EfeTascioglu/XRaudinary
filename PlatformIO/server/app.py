@@ -23,8 +23,6 @@ from flask import Flask, Response, jsonify, request, send_file
 
 from typing import List
 
-from audio_transcription.whisper_live_kit.audio_main import run as run_audio_main
-
 
 app = Flask(__name__)
 
@@ -1416,7 +1414,7 @@ def api_buffer_to_local_wav() -> Response:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             filename = f"audio_{timestamp}_{buffer_bits}bit.wav"
             
-            localdir = "serverwavs"
+            localdir = "/Users/matthewtamura/Documents/GitHub/AudioVision/PlatformIO/server/serverwavs"
             os.makedirs(localdir, exist_ok=True)
             localpath = os.path.join(localdir, filename)
             with open(localpath, "wb") as f:

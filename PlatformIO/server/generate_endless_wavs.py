@@ -6,7 +6,7 @@ import time
 
 wav_directory = "serverwavs"
 
-MAX_WAVS = 5
+MAX_WAVS = 100
 
 if __name__ == "__main__":
     while True:
@@ -16,5 +16,5 @@ if __name__ == "__main__":
             files = os.listdir(wav_directory)
             files.sort(key=lambda x: os.path.getctime(os.path.join(wav_directory, x)))
             os.remove(os.path.join(wav_directory, files[0]))
-        time.sleep(5)
+        time.sleep(3)
     

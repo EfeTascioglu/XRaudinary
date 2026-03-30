@@ -100,6 +100,7 @@ queue = asyncio.Queue()
 
 
 async def process_wavs(whisper_model, directory: str, third_channel_hardcoded_delay=0):
+    print("Starting WAV processing loop...")
     while True:
         wav_path = get_oldest_wav(directory)
         if not wav_path:
@@ -114,14 +115,16 @@ async def process_wavs(whisper_model, directory: str, third_channel_hardcoded_de
         ## 2. Run localization
         localization_vector = localization_main(data, fs, third_channel_hardcoded_delay=third_channel_hardcoded_delay)
         print(f"Localization vector: {localization_vector}")
+        print(f"Localization vector angle: {np.arctan2(localization_vector[1], localization_vector[0]) * 180 / np.pi} degrees")
 
         ## 3. Run transcription
-        segments, info = whisper_model.transcribe(wav_path)
+        segments, info = whisper_model.transcribe(wav_path, vad_filter=True)
         segments = list(segments)  # materialize generator
 
         ## 4. Format JSON
         output_json = format_output(localization_vector, segments)
         print(f"Output JSON: \n{output_json}")
+        open("log2.txt", "a").write(output_json + "\n")
 
         ## 5. Push JSON to the queue for WebSocket
         await queue.put(output_json)
@@ -131,8 +134,11 @@ async def process_wavs(whisper_model, directory: str, third_channel_hardcoded_de
         print(f"Deleted: {wav_path} \n")
 
 
-async def ws_handler(websocket, path):
+async def ws_handler(websocket):
     """Connection handler for websocket"""
+    client = websocket.remote_address
+    print(f"[WS] Client connected: {client}")
+
     while True:
         # Wait for new JSON from queue
         output_json = await queue.get()
@@ -140,13 +146,15 @@ async def ws_handler(websocket, path):
 
 
 async def main_async():
-    third_channel_hardcoded_delay = 0
+    third_channel_hardcoded_delay = -8
     whisper_model = initilaize_model()
-    directory = "./wav_queue"
+    directory = "/Users/matthewtamura/Documents/GitHub/AudioVision/PlatformIO/server/serverwavs"
+    print("Starting server and WAV processing...")
 
     # Run WAV processing and WebSocket server concurrently
-    server = websockets.serve(ws_handler, "0.0.0.0", 8765) # init a WebSocket Server in python
+    server = websockets.serve(ws_handler, "0.0.0.0", 8766) # init a WebSocket Server in python
 
+    print("starting gather")
     await asyncio.gather(   # gather -> run concurrently in the event loop so the processing of the wavs and the server is running concurrently
         process_wavs(whisper_model, directory, third_channel_hardcoded_delay=third_channel_hardcoded_delay),
         server

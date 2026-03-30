@@ -101,8 +101,9 @@ def main(data, fs, third_channel_hardcoded_delay=0) -> None:
         channels[2] = np.roll(channels[2], third_channel_hardcoded_delay)
 
     for i in range(len(channels)):
-        print(f"Channel {i}: {channels[i][0:10]}")
-
+        # print(f"Channel {i}: {channels[i][0:10]}")
+        pass
+    
     print(f"Number of channels {data.shape[1]} \n")
     window_len = int(0.1 * fs)
     step = window_len // 2

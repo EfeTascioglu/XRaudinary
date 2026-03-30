@@ -119,7 +119,7 @@ def find_delay(
     reordered = np.zeros(n_fft)
     reordered[:window_len] = avg_corrs[window_len:]
     reordered[window_len:] = avg_corrs[:window_len]
-    search_radius = 15
+    search_radius = 128
     search = reordered[window_len - search_radius : window_len + search_radius + 1]
     size = len(search)
 
